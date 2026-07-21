@@ -6,7 +6,7 @@
 
 class MultiHeadAttention {
 public:
-    static Tensor compute(const Tensor& Q, const Tensor& K, const Tensor& V, size_t num_heads) {
+    static Tensor compute(const Tensor& Q, const Tensor& K, const Tensor& V, size_t num_heads, bool use_causal_mask = false) {
         size_t embed_dim = Q.shape_[1];
         
         if (embed_dim % num_heads != 0) {
@@ -25,7 +25,7 @@ public:
             Tensor v_head = V.slice_cols(start_col, head_dim);
 
             // Route through your Phase 3 hardware-accelerated engine
-            Tensor head_context = Attention::compute(q_head, k_head, v_head);
+            Tensor head_context = Attention::compute(q_head, k_head, v_head, use_causal_mask);
             head_outputs.push_back(head_context);
         }
 

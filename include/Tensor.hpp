@@ -235,4 +235,20 @@ public:
             }
         }
     }
+
+    // Applies a lower-triangular causal mask (blinds the upper triangle)
+    void apply_causal_mask() {
+        if (shape_.size() != 2 || shape_[0] != shape_[1]) {
+            throw std::invalid_argument("Causal mask requires a square [SeqLen, SeqLen] matrix.");
+        }
+        
+        int seq_len = shape_[0];
+        
+        // Loop through the matrix, setting everything above the diagonal to -infinity
+        for (int i = 0; i < seq_len; ++i) {
+            for (int j = i + 1; j < seq_len; ++j) {
+                set({(size_t)i, (size_t)j}, -INFINITY);
+            }
+        }
+    }
 };

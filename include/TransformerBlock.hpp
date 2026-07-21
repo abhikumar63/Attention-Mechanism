@@ -7,7 +7,7 @@ public:
     static Tensor compute(const Tensor& X, 
                           const Tensor& Q_proj, const Tensor& K_proj, const Tensor& V_proj,
                           const Tensor& W_1, const Tensor& W_2, 
-                          size_t num_heads) {
+                          size_t num_heads, bool use_causal_mask = false) {
         
         // --- SUB-LAYER 1: Multi-Head Attention ---
         // Project input X into Q, K, V
@@ -15,7 +15,7 @@ public:
         Tensor K = X.matmul(K_proj);
         Tensor V = X.matmul(V_proj);
 
-        Tensor mha_output = MultiHeadAttention::compute(Q, K, V, num_heads);
+        Tensor mha_output = MultiHeadAttention::compute(Q, K, V, num_heads, use_causal_mask);
 
         // Residual Connection & Layer Normalization
         Tensor norm_1 = X.add(mha_output);
