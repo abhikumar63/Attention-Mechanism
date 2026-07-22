@@ -1,36 +1,51 @@
-#pragma once
+#ifndef ATTENTION_HPP
+#define ATTENTION_HPP
+
 #include "Tensor.hpp"
+#include "KVCache.hpp"
 #include <cmath>
 #include <stdexcept>
 
 class Attention {
 public:
-    // Computes Scaled Dot-Product Attention
-    // Q, K, V are expected to be 2D tensors of shape [SeqLen, HeadDim]
-    static Tensor compute(const Tensor& Q, const Tensor& K, const Tensor& V, bool use_causal_mask = false) {
-        if (Q.shape_.size() != 2 || K.shape_.size() != 2 || V.shape_.size() != 2) {
-            throw std::invalid_argument("Attention requires 2D matrices [SeqLen, HeadDim]");
+    static Tensor compute(const Tensor& Q, const Tensor& K, const Tensor& V, 
+                          KVCache* cache = nullptr, bool use_causal_mask = false) {
+        
+        // Dynamic pointers to hold whatever matrices will be used for the final dot product
+        const Tensor* final_k = &K;
+        const Tensor* final_v = &V;
+
+        // If a KV cache is provided, update it and point to the aggregated historical tensors
+        if (cache != nullptr) {
+            cache->update(K, V);
+            final_k = &(*(cache->k_cache));
+            final_v = &(*(cache->v_cache));
         }
 
-        // 1. Get dimension of the key vector (d_k)
-        float d_k = static_cast<float>(K.shape_[1]);
+        // Integrity checks based on the chosen operational state
+        if (Q.shape_[1] != final_k->shape_[1]) {
+            throw std::invalid_argument("Dimension mismatch: Q and K head dimensions must match.");
+        }
+        if (final_k->shape_[0] != final_v->shape_[0]) {
+            throw std::invalid_argument("Dimension mismatch: Cached K and V sequence lengths must match.");
+        }
 
-        // 2. Transpose K to K^T
-        // This is O(1) time, zero memory copied.
-        Tensor K_T = K.transpose(0, 1);
+        float d_k = static_cast<float>(final_k->shape_[1]);
+        Tensor K_T = final_k->transpose(0, 1);
 
-        // 3. Score = Q * K^T
+        // 1. Attention Scores = Q * K^T
+        // If caching: [1, head_dim] * [head_dim, current_seq_len] -> [1, current_seq_len]
         Tensor scores = Q.matmul(K_T);
 
-        // 4. Scale by 1 / sqrt(d_k)
+        // 2. Scale scores
         scores.scale(1.0f / std::sqrt(d_k));
 
-        // 5. CAUSAL MASK INJECTION
-        if (use_causal_mask) {
+        // 3. Causal Masking (Only relevant if we are processing multiple tokens at once)
+        if (use_causal_mask && scores.shape_[0] > 1) {
             scores.apply_causal_mask();
         }
 
-        // 6. Apply Softmax
+        // 4. Softmax normalization over the row
         scores.softmax();
 
         // --- DEBUG PRINT: Let's look at the actual probabilities ---
@@ -44,8 +59,11 @@ public:
         // std::cout << "\n";
         // -----------------------------------------------------------
 
-        // 7. Context = Scores * V
-        Tensor context = scores.matmul(V);
+        // 5. Context Output = Scores * V
+        // If caching: [1, current_seq_len] * [current_seq_len, head_dim] -> [1, head_dim]
+        Tensor context = scores.matmul(*final_v);
         return context;
     }
 };
+
+#endif // ATTENTION_HPP

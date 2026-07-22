@@ -251,4 +251,38 @@ public:
             }
         }
     }
+
+    // Concatenates another tensor to this tensor along Dim 0 (rows)
+    // Used to dynamically grow the KV cache history
+    Tensor concatenate(const Tensor& other) const {
+        if (shape_.size() != 2 || other.shape_.size() != 2) {
+            throw std::invalid_argument("Concatenation currently only supported for 2D tensors.");
+        }
+        if (shape_[1] != other.shape_[1]) {
+            throw std::invalid_argument("Dimension mismatch: Tensors must have the same column width to concatenate.");
+        }
+
+        size_t new_rows = shape_[0] + other.shape_[0];
+        size_t cols = shape_[1];
+        
+        Tensor result({new_rows, cols});
+
+        // Copy current tensor's data
+        for (size_t i = 0; i < shape_[0]; ++i) {
+            for (size_t j = 0; j < cols; ++j) {
+                result.set({i, j}, get({i, j}));
+            }
+        }
+
+        // Append other tensor's data
+        for (size_t i = 0; i < other.shape_[0]; ++i) {
+            for (size_t j = 0; j < cols; ++j) {
+                result.set({shape_[0] + i, j}, other.get({i, j}));
+            }
+        }
+
+        // Above for loops for copying data could be optimized.
+
+        return result;
+    }
 };
