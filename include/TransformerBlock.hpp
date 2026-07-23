@@ -21,7 +21,7 @@ public:
 
         // 2. Multi-Head Attention Routing
         Tensor mha_output = MultiHeadAttention::compute(Q, K, V, num_heads, head_caches, use_causal_mask);
-
+        
         // 3. First Residual & LayerNorm
         Tensor norm1 = X.add(mha_output);
         norm1.layer_norm();

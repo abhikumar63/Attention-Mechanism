@@ -8,6 +8,7 @@
 #include <cmath>
 #include <algorithm>
 #include <Accelerate/Accelerate.h>
+#include <fstream>
 
 class Tensor {
 public:
@@ -284,5 +285,22 @@ public:
         // Above for loops for copying data could be optimized.
 
         return result;
+    }
+
+    // Reads raw binary float32 data sequentially from a file stream
+    void load_from_binary(std::ifstream& file) {
+        if (!file.is_open()) {
+            throw std::runtime_error("File stream is not open.");
+        }
+        
+        // Calculate exact bytes needed for this tensor's shape
+        size_t num_bytes = data_->size() * sizeof(float);
+        
+        // Read directly into the contiguous memory buffer
+        file.read(reinterpret_cast<char*>(data_->data()), num_bytes);
+        
+        if (!file) {
+            throw std::runtime_error("Failed to read the expected number of bytes from binary file.");
+        }
     }
 };

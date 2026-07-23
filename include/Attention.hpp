@@ -31,6 +31,8 @@ public:
         }
 
         float d_k = static_cast<float>(final_k->shape_[1]);
+
+        // 1. O(1) Zero-Copy Transpose (Strides updated natively)
         Tensor K_T = final_k->transpose(0, 1);
 
         // 1. Attention Scores = Q * K^T
@@ -47,17 +49,6 @@ public:
 
         // 4. Softmax normalization over the row
         scores.softmax();
-
-        // --- DEBUG PRINT: Let's look at the actual probabilities ---
-        // std::cout << "--- Attention Probabilities [" << (use_causal_mask ? "MASKED" : "UNMASKED") << "] ---\n";
-        // for (size_t i = 0; i < scores.shape_[0]; ++i) {
-        //     for (size_t j = 0; j < scores.shape_[1]; ++j) {
-        //         std::cout << std::fixed << std::setprecision(4) << scores.get({i, j}) << "  ";
-        //     }
-        //     std::cout << "\n";
-        // }
-        // std::cout << "\n";
-        // -----------------------------------------------------------
 
         // 5. Context Output = Scores * V
         // If caching: [1, current_seq_len] * [current_seq_len, head_dim] -> [1, head_dim]

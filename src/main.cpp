@@ -169,6 +169,43 @@ int main() {
         }
     }
 
+    // ---------------------------------------------------------
+    // PHASE 7: Binary Weight Ingestion (Real-World Pipeline)
+    // ---------------------------------------------------------
+    {
+        std::cout << "\n>>> EXECUTING PHASE 7: Binary Weight Ingestion\n";
+        size_t seq_len = 3, embed_dim = 8, num_heads = 2, ffn_dim = 32;
+
+        Tensor X({seq_len, embed_dim});
+        Tensor Q_proj({embed_dim, embed_dim});
+        Tensor K_proj({embed_dim, embed_dim});
+        Tensor V_proj({embed_dim, embed_dim});
+        Tensor W_1({embed_dim, ffn_dim});
+        Tensor W_2({ffn_dim, embed_dim});
+
+        // Open the binary file
+        std::ifstream weight_file("../model.bin", std::ios::binary);
+        if (!weight_file) {
+            std::cerr << "[ERROR] Could not open model.bin. Did you run export_weights.py?\n";
+            return 1;
+        }
+
+        // Load tensors in the EXACT order they were exported in Python
+        std::cout << "\nStreaming bytes from model.bin into Tensor memory...\n";
+        X.load_from_binary(weight_file);
+        Q_proj.load_from_binary(weight_file);
+        K_proj.load_from_binary(weight_file);
+        V_proj.load_from_binary(weight_file);
+        W_1.load_from_binary(weight_file);
+        W_2.load_from_binary(weight_file);
+        weight_file.close();
+
+        // Run the Masked Autoregressive Block
+        Tensor output = TransformerBlock::compute(X, Q_proj, K_proj, V_proj, W_1, W_2, num_heads, nullptr, true);
+
+        print_tensor("C++ Engine Output (from Binary Weights)", output);
+    }
+
     std::cout << "\n=================================================\n";
     std::cout << " DIAGNOSTICS COMPLETE: ALL SYSTEMS NOMINAL \n";
     std::cout << "=================================================\n";

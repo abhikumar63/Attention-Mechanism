@@ -50,7 +50,7 @@ public:
             for (size_t i = 0; i < seq_len; ++i) {
                 for (size_t j = 0; j < head_dim; ++j) {
                     size_t dest_col = h * head_dim + j;
-                    combined_output.set({i, j}, head_context.get({i, j}));
+                    combined_output.set({i, dest_col}, head_context.get({i, j}));
                 }
             }
         }
